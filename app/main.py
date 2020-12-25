@@ -14,6 +14,7 @@ class DownloadIn(BaseModel):
     order_by: str = 'resolution'
     order: str = 'descending'
     index: int = 0
+    subdir: str = ''
 
 class DownloadOut(DownloadIn):
     _current_downloads = []
@@ -35,7 +36,7 @@ class DownloadOut(DownloadIn):
         else:
             stream = query.asc()[self.index]
 
-        dl_thread = threading.Thread( target = stream.download )
+        dl_thread = threading.Thread( target = stream.download, args=['./downloads/' + self.subdir] )
         dl_thread.start()
 
     def progress_callback(self, stream: pytube.Stream, chunk, bytes_remaning):
