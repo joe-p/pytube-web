@@ -35,21 +35,23 @@ class DownloadOut(DownloadIn):
         query = yt_obj.streams.filter(**self.filter).order_by(self.order_by)
 
         if self.order == 'descending':
-            stream = query.desc()[self.index]
+            video_stream = query.desc()[self.index]
         else:
-            stream = query.asc()[self.index]
+            video_stream = query.asc()[self.index]
+
+        audio_stream = yt_obj.streams.get_audio_only()
 
         config = toml.load('config.toml')
 
-        dl_args = { 'output_path': config['output_path'], 'filename': regex.sub(r'\.[0-9a-z]+$', '', stream.default_filename ) }
+        dl_args = { 'output_path': config['output_path'], 'filename': regex.sub(r'\.[0-9a-z]+$', '', video_stream.default_filename ) }
 
         if config['podcast']:
             for podcast in config['podcast']:
-                if regex.search(podcast['match'], stream.title):
+                if regex.search(podcast['match'], video_stream.title):
                     dl_args['output_path'] += ( 'podcasts/' + podcast['name'] )
 
-                    episode_number = regex.search(podcast['episode_number'], stream.title).group(0).strip()
-                    episode_name = regex.search(podcast['episode_name'], stream.title).group(0).strip()
+                    episode_number = regex.search(podcast['episode_number'], video_stream.title).group(0).strip()
+                    episode_name = regex.search(podcast['episode_name'], video_stream.title).group(0).strip()
 
                     dl_args['filename'] = podcast['name'] + ' - ' + 'S01E' + episode_number + ' - ' + pytube.helpers.safe_filename(episode_name)
                     
@@ -72,17 +74,40 @@ class DownloadOut(DownloadIn):
 
             
         os.makedirs(dl_args['output_path'], exist_ok=True)
-        urllib.request.urlretrieve(yt_obj.thumbnail_url, dl_args['output_path'] + '/' + dl_args['filename'] + '.png')
-        dl_thread = threading.Thread( target = stream.download, kwargs = dl_args )
-        dl_thread.start()
 
+        full_path = dl_args['output_path'] + '/' + dl_args['filename']
+        
+        urllib.request.urlretrieve(yt_obj.thumbnail_url, full_path + '.png')
+
+        video_dl_args = dl_args.copy()
+        video_dl_args['filename'] += '_video'
+
+        video_dl_thread = threading.Thread( target = video_stream.download, kwargs = video_dl_args )
+        video_dl_thread.start()
+
+        audio_dl_args = dl_args.copy()
+        audio_dl_args['filename'] += '_audio'
+        
+        audio_dl_thread = threading.Thread( target = audio_stream.download, kwargs = audio_dl_args )
+        audio_dl_thread.start()
+        
     def progress_callback(self, stream: pytube.Stream, chunk, bytes_remaning):
-        percent = 100 * (stream.filesize - bytes_remaning) / stream.filesize
-        self.percent = percent
+        if stream.includes_video_track:
+            percent = 100 * (stream.filesize - bytes_remaning) / stream.filesize
+            self.percent = percent
     
     def complete_callback(self, stream: pytube.Stream, path: str):
-        self.percent = 100
-        self._current_downloads.remove(self)
+        if stream.includes_video_track:
+            self.percent = 100
+            video_path = path
+            audio_path = path.replace('_video.','_audio.')
+            output_path = regex.sub(r'_video\.[0-9a-z]+$', '.mkv', path )
+
+            os.system("ffmpeg -y -i '" + video_path + "' -i '" + audio_path + "' -c copy '" + output_path + "'")
+            os.remove(audio_path)
+            os.remove(video_path)
+
+            self._current_downloads.remove(self)
 
 @app.post("/api/downloads/start")
 def create_item(download_in: DownloadIn):
