@@ -1,4 +1,4 @@
-output_path  = "./downloads"
+output_path  = "./downloads/"
 
 [[podcast]]
 name = 'Lex Fridman Podcast'
