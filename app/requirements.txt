@@ -1,4 +1,4 @@
-pytube
+git+https://github.com/nficano/pytube
 toml
 regex
 fastapi
