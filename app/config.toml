@@ -1,0 +1,7 @@
+output_path  = "./downloads"
+
+[[podcast]]
+name = 'Lex Fridman Podcast'
+match = 'Lex Fridman Podcast'
+episode_number = '(?<=#)\d+'
+episode_name = '.*(?=\|)'

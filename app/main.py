@@ -5,6 +5,10 @@ from pydantic import BaseModel
 import threading
 import pytube
 import datetime
+import toml
+import regex
+import urllib.request
+import os
 
 app = FastAPI()
 
@@ -14,7 +18,6 @@ class DownloadIn(BaseModel):
     order_by: str = 'resolution'
     order: str = 'descending'
     index: int = 0
-    subdir: str = ''
 
 class DownloadOut(DownloadIn):
     _current_downloads = []
@@ -36,7 +39,40 @@ class DownloadOut(DownloadIn):
         else:
             stream = query.asc()[self.index]
 
-        dl_thread = threading.Thread( target = stream.download, args=['./downloads/' + self.subdir] )
+        config = toml.load('config.toml')
+
+        dl_args = { 'output_path': config['output_path'], 'filename': regex.sub(r'\.[0-9a-z]+$', '', stream.default_filename ) }
+
+        if config['podcast']:
+            for podcast in config['podcast']:
+                if regex.search(podcast['match'], stream.title):
+                    dl_args['output_path'] += ( 'podcasts/' + podcast['name'] )
+
+                    episode_number = regex.search(podcast['episode_number'], stream.title).group(0).strip()
+                    episode_name = regex.search(podcast['episode_name'], stream.title).group(0).strip()
+
+                    dl_args['filename'] = podcast['name'] + ' - ' + 'S00E' + episode_number + ' - ' + pytube.helpers.safe_filename(episode_name)
+                    
+                    lines = [
+                        '<?xml version="1.0" encoding="utf-8" standalone="yes"?>',
+                        "<episodedetails>",
+                        "\t<title>" + episode_name + "</title>",
+                        "\t<episode>" + episode_number + "</episode>",
+                        "\t<season>1</season>",
+                        "</episodedetails>"
+                    ]
+
+                    os.makedirs(dl_args['output_path'], exist_ok=True)
+
+                    with open(dl_args['output_path'] + '/' + dl_args['filename'] + '.nfo', 'w') as file:
+                        for line in lines:
+                            file.write(line + "\n")
+
+
+            
+        os.makedirs(dl_args['output_path'], exist_ok=True)
+        urllib.request.urlretrieve(yt_obj.thumbnail_url, dl_args['output_path'] + '/' + dl_args['filename'] + '.png')
+        dl_thread = threading.Thread( target = stream.download, kwargs = dl_args )
         dl_thread.start()
 
     def progress_callback(self, stream: pytube.Stream, chunk, bytes_remaning):

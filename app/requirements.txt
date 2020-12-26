@@ -1,1 +1,4 @@
 pytube
+toml
+regex
+fastapi
