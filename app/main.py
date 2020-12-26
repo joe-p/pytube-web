@@ -59,6 +59,7 @@ class DownloadOut(DownloadIn):
                         "\t<title>" + episode_name + "</title>",
                         "\t<episode>" + episode_number + "</episode>",
                         "\t<season>1</season>",
+                        "\t<plot><![CDATA[" + yt_obj.description.replace("\n","<br>") + "]]></plot>",
                         "</episodedetails>"
                     ]
 
