@@ -51,7 +51,7 @@ class DownloadOut(DownloadIn):
                     episode_number = regex.search(podcast['episode_number'], stream.title).group(0).strip()
                     episode_name = regex.search(podcast['episode_name'], stream.title).group(0).strip()
 
-                    dl_args['filename'] = podcast['name'] + ' - ' + 'S00E' + episode_number + ' - ' + pytube.helpers.safe_filename(episode_name)
+                    dl_args['filename'] = podcast['name'] + ' - ' + 'S01E' + episode_number + ' - ' + pytube.helpers.safe_filename(episode_name)
                     
                     lines = [
                         '<?xml version="1.0" encoding="utf-8" standalone="yes"?>',
