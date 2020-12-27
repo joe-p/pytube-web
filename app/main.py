@@ -18,6 +18,7 @@ class DownloadIn(BaseModel):
     order_by: str = 'resolution'
     order: str = 'descending'
     index: int = 0
+    subdir: str = ''
 
 class DownloadOut(DownloadIn):
     _current_downloads = []
@@ -72,7 +73,7 @@ class DownloadOut(DownloadIn):
                             file.write(line + "\n")
 
 
-            
+        dl_args['output_path'] += self.subdir
         os.makedirs(dl_args['output_path'], exist_ok=True)
 
         full_path = dl_args['output_path'] + '/' + dl_args['filename']
